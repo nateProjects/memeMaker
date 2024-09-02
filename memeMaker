@@ -2,6 +2,16 @@
 
 set -e  # Exit immediately if a command exits with a non-zero status.
 
+text_size_percentage="${7:-16}"  # Default to 16 if not provided
+
+calculate_point_size() {
+    local border_size=$1
+    local percentage=$text_size_percentage
+    local min_size=20
+    local calculated_size=$(( border_size * percentage / 100 ))
+    echo $(( calculated_size > min_size ? calculated_size : min_size ))
+}
+
 # Check if required arguments are provided
 if [ $# -lt 3 ]; then
     echo "Usage: $0 <input_image> <output_image> <text> [side] [border_percentage] [font]"
@@ -102,8 +112,12 @@ echo "Image offset: $offset"
 echo "Text position: $text_position"
 echo "Text size: $text_size"
 
+# Calculate point size
+point_size=$(calculate_point_size $border_size)
+echo "Using point size: $point_size"
+
 # Create text image
-magick -background black -fill white $font_option -pointsize 20 -size "$text_size" \
+magick -background black -fill white $font_option -pointsize $point_size -size "$text_size" \
     caption:"$text" \
     text_image.png
 
