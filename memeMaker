@@ -1,0 +1,129 @@
+#!/bin/bash
+
+set -e  # Exit immediately if a command exits with a non-zero status.
+
+# Check if required arguments are provided
+if [ $# -lt 3 ]; then
+    echo "Usage: $0 <input_image> <output_image> <text> [side] [border_percentage] [font]"
+    echo "Side options: top, bottom, left, right (default: bottom)"
+    echo "Text should be enclosed in quotes if it contains spaces"
+    echo "Border percentage is optional (default: 25% for top/bottom, 50% for left/right)"
+    echo "Font is optional. If not provided, the system default will be used"
+    exit 1
+fi
+
+input_image="$1"
+output_image="$2"
+text="$3"
+side="${4:-bottom}"  # Default to bottom if not provided
+border_percentage="${5:-}"  # Use the 5th argument if provided, otherwise it's an empty string
+font="${6:-}"  # Use the 6th argument if provided, otherwise it's an empty string
+
+# Set text buffer (in pixels)
+text_buffer=10
+
+# Set default border percentage based on side if not provided
+if [ -z "$border_percentage" ]; then
+    case $side in
+        top|bottom)
+            border_percentage=25
+            ;;
+        left|right)
+            border_percentage=50
+            ;;
+        *)
+            echo "Invalid side option '$side'. Defaulting to bottom."
+            side="bottom"
+            border_percentage=25
+            ;;
+    esac
+else
+    # Validate border percentage if provided
+    if ! [[ "$border_percentage" =~ ^[0-9]+$ ]] || [ "$border_percentage" -lt 25 ] || [ "$border_percentage" -gt 50 ]; then
+        echo "Border percentage must be an integer between 25 and 50. Defaulting to 25%."
+        border_percentage=25
+    fi
+fi
+
+echo "Using side: $side"
+echo "Using border percentage: $border_percentage%"
+
+# Prepare font option for ImageMagick command
+font_option=""
+if [ -n "$font" ]; then
+    # Check if the specified font is available
+    if magick convert -list font | grep -q "$font"; then
+        font_option="-font $font"
+    else
+        echo "Warning: Font '$font' not found. Using system default."
+    fi
+fi
+
+# Get image dimensions
+dimensions=$(magick identify -format "%w %h" "$input_image")
+width=$(echo $dimensions | cut -d' ' -f1)
+height=$(echo $dimensions | cut -d' ' -f2)
+
+echo "Original image dimensions: ${width}x${height}"
+
+# Calculate border size and new dimensions
+case $side in
+    top|bottom)
+        border_size=$(( height * border_percentage / 100 ))
+        new_width=$width
+        new_height=$((height + border_size))
+        if [ "$side" = "top" ]; then
+            offset="+0+${border_size}"
+            text_position="+${text_buffer}+${text_buffer}"
+        else
+            offset="+0+0"
+            text_position="+${text_buffer}+$((height + text_buffer))"
+        fi
+        text_size="$((width - 2*text_buffer))x$((border_size - 2*text_buffer))"
+        ;;
+    left|right)
+        border_size=$(( width * border_percentage / 100 ))
+        new_width=$((width + border_size))
+        new_height=$height
+        if [ "$side" = "left" ]; then
+            offset="+${border_size}+0"
+            text_position="+${text_buffer}+${text_buffer}"
+        else
+            offset="+0+0"
+            text_position="+$((width + text_buffer))+${text_buffer}"
+        fi
+        text_size="$((border_size - 2*text_buffer))x$((height - 2*text_buffer))"
+        ;;
+esac
+
+echo "Border size: $border_size"
+echo "New dimensions: ${new_width}x${new_height}"
+echo "Image offset: $offset"
+echo "Text position: $text_position"
+echo "Text size: $text_size"
+
+# Create text image
+magick -background black -fill white $font_option -pointsize 20 -size "$text_size" \
+    caption:"$text" \
+    text_image.png
+
+# Create the final image with border and text
+magick -size "${new_width}x${new_height}" xc:black \
+    "$input_image" -geometry "$offset" -composite \
+    text_image.png -geometry "$text_position" -composite \
+    "$output_image"
+
+# Clean up temporary file
+rm text_image.png
+
+echo "Image processing complete."
+
+# Verify the output
+if [ -f "$output_image" ]; then
+    output_dimensions=$(magick identify -format "%w %h" "$output_image")
+    echo "Output image dimensions: $output_dimensions"
+    echo "Output saved as $output_image"
+else
+    echo "Error: Output file was not created."
+    exit 1
+fi
