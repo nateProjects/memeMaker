@@ -20,7 +20,7 @@ This bash script adds a captioned border to an image using ImageMagick. It allow
 
 ## Usage
 
-`./caption.sh <input_image> <output_image> <text> [side] [border_percentage] [font]`
+`./caption <input_image> <output_image> <text> [side] [border_percentage] [font] [text_size_percentage]"`
 
 ### Parameters:
 
