@@ -1,6 +1,6 @@
 # memeMaker
 
-Add a caption to any side of an image using ImageMagick.
+Add text to any side of an image — as a bordered caption or overlaid directly onto the image — using ImageMagick.
 
 ## Installation
 
