@@ -1,70 +1,64 @@
 # memeMaker
-Create captions under / above / beside images using ImageMagick
 
-## Purpose
+Add a caption to any side of an image using ImageMagick.
 
-This bash script adds a captioned border to an image using ImageMagick. It allows you to add text to a specified side of an image (top, bottom, left, or right) with customizable border size and font options.
+## Installation
 
-## Features
+Run the install script to get ImageMagick on macOS or Linux:
 
-- Add a border with text to any side of an image
-- Customizable border size (as a percentage of image dimensions)
-- Optional font selection
-- Automatic text wrapping within the border
-- Flexible defaults for ease of use
+```bash
+./install.sh
+```
 
-## Prerequisites
-
-- Bash shell
-- ImageMagick (must be installed and accessible in your PATH)
+This installs via Homebrew on macOS, or your distro's package manager on Linux (apt, dnf, yum, pacman, zypper).
 
 ## Usage
 
-`./caption <input_image> <output_image> <text> [side] [border_percentage] [font] [text_size_percentage]"`
+```bash
+./memeMaker <input_image> <output_image> <text> [side] [border_percentage] [font]
+```
 
-### Parameters:
+| Parameter | Required | Description |
+|---|---|---|
+| `input_image` | Yes | Path to the source image |
+| `output_image` | Yes | Path for the output image |
+| `text` | Yes | Caption text — quote it if it contains spaces |
+| `side` | No | Where to place the caption: `top`, `bottom`, `left`, `right` (default: `bottom`) |
+| `border_percentage` | No | Border size as a % of that dimension, 25–50 (default: 25 for top/bottom, 50 for left/right) |
+| `font` | No | Font name — defaults to system font |
 
-* <input_image>: Path to the input image file
-* <output_image>: Path where the output image will be saved
-* <text>: The caption text (enclose in quotes if it contains spaces)
-* [side]: (Optional) Side to place the caption (top, bottom, left, right). Default: bottom
-* [border_percentage]: (Optional) Border size as a percentage of image dimension (25-50). Default: 25% for top/bottom, 50% for left/right
-* [font]: (Optional) Font to use for the caption. Default: System default font
+To see available fonts:
 
-See a list of fonts available with - `magick convert -list font | more`
+```bash
+magick -list font
+```
 
-### Examples:
+### Examples
 
-Basic usage (adds caption to bottom with default settings):
+```bash
+# Caption on the bottom with defaults
+./memeMaker input.jpg output.jpg "This is my caption"
 
-`bashCopy./caption.sh input.jpg output.jpg "This is a caption"`
+# Left side with a custom border size
+./memeMaker input.jpg output.jpg "Left side caption" left 30
 
-Specifying side and border percentage:
+# Top caption with a specific font
+./memeMaker input.jpg output.jpg "Custom font" top 40 Arial
+```
 
-`bashCopy./caption.sh input.jpg output.jpg "Left side caption" left 30`
+## Testing
 
-Full parameter usage:
+A test suite is included that runs the script against `monkey-test-image.jpg` across all four sides, two text lengths, and a couple of custom border sizes:
 
-`bashCopy./caption.sh input.jpg output.jpg "Custom font caption" top 40 Arial`
+```bash
+./test.sh
+```
+
+Output images are written to `test-output/` so you can inspect them visually.
 
 ## Notes
 
-The script will create a temporary file (text_image.png) in the current directory, which is deleted after processing.
-
-If an invalid side is specified, it defaults to bottom.
-
-If an invalid border percentage is provided, it defaults to 25%.
-
-If a specified font is not available, the system default will be used.
-
-## Troubleshooting
-
-If you encounter any issues, ensure that:
-
-ImageMagick is correctly installed and accessible in your PATH
-
-You have write permissions in the current directory and the output directory
-
-Your input image file exists and is a valid image format
-
-For any persistent issues, please check the script's output for error messages.
+- Text is automatically scaled to fit the caption box — longer text will appear smaller.
+- If an invalid side is given, it defaults to `bottom`.
+- If an invalid border percentage is given, it defaults to 25%.
+- If a specified font is not found, the system default is used.
