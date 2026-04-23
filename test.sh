@@ -13,20 +13,51 @@ LOREM_LONG="Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eius
 PASS=0
 FAIL=0
 
+INPUT_DIMS=$(magick identify -format "%wx%h" "$INPUT")
+
 mkdir -p "$OUTPUT_DIR"
 
-run_test() {
+# Border test: output dimensions must be larger than the input
+run_border_test() {
     local name="$1"
     local output="$OUTPUT_DIR/${name}.jpg"
     shift
     echo -n "  $name ... "
     if "$MEME_MAKER" "$INPUT" "$output" "$@" >/dev/null 2>&1; then
-        if [ -f "$output" ]; then
-            dims=$(magick identify -format "%wx%h" "$output")
-            echo "PASS ($dims)"
+        local dims
+        dims=$(magick identify -format "%wx%h" "$output")
+        if [ "$dims" != "$INPUT_DIMS" ]; then
+            echo "PASS ($INPUT_DIMS -> $dims)"
             PASS=$(( PASS + 1 ))
         else
-            echo "FAIL (output file missing)"
+            echo "FAIL (dimensions unchanged — border not added)"
+            FAIL=$(( FAIL + 1 ))
+        fi
+    else
+        echo "FAIL (script error)"
+        FAIL=$(( FAIL + 1 ))
+    fi
+}
+
+# Overlay test: dimensions must stay the same, but pixels must differ from the original
+run_overlay_test() {
+    local name="$1"
+    local output="$OUTPUT_DIR/${name}.jpg"
+    shift
+    echo -n "  $name ... "
+    if "$MEME_MAKER" "$INPUT" "$output" "$@" >/dev/null 2>&1; then
+        local dims changed_pixels
+        dims=$(magick identify -format "%wx%h" "$output")
+        # AE output is "216905 (0.433659)" — grab just the leading integer
+        changed_pixels=$(magick compare -metric AE "$INPUT" "$output" /dev/null 2>&1 | awk '{print int($1)}' || true)
+        if [ "$dims" != "$INPUT_DIMS" ]; then
+            echo "FAIL (dimensions changed — image was resized)"
+            FAIL=$(( FAIL + 1 ))
+        elif [ "${changed_pixels:-0}" -gt 0 ] 2>/dev/null; then
+            echo "PASS (same size, ${changed_pixels} px composited)"
+            PASS=$(( PASS + 1 ))
+        else
+            echo "FAIL (output identical to input — text not composited)"
             FAIL=$(( FAIL + 1 ))
         fi
     else
@@ -37,34 +68,34 @@ run_test() {
 
 echo ""
 echo "=== memeMaker test suite ==="
-echo "Input: $INPUT"
+echo "Input: $INPUT ($INPUT_DIMS)"
 echo "Output dir: $OUTPUT_DIR"
 echo ""
 
-echo "-- Short text --"
-run_test "bottom_short"  "$LOREM_SHORT" bottom
-run_test "top_short"     "$LOREM_SHORT" top
-run_test "left_short"    "$LOREM_SHORT" left
-run_test "right_short"   "$LOREM_SHORT" right
+echo "-- Border: short text --"
+run_border_test "bottom_short"  "$LOREM_SHORT" bottom
+run_border_test "top_short"     "$LOREM_SHORT" top
+run_border_test "left_short"    "$LOREM_SHORT" left
+run_border_test "right_short"   "$LOREM_SHORT" right
 
 echo ""
-echo "-- Long text --"
-run_test "bottom_long"   "$LOREM_LONG" bottom
-run_test "top_long"      "$LOREM_LONG" top
-run_test "left_long"     "$LOREM_LONG" left
-run_test "right_long"    "$LOREM_LONG" right
+echo "-- Border: long text --"
+run_border_test "bottom_long"   "$LOREM_LONG" bottom
+run_border_test "top_long"      "$LOREM_LONG" top
+run_border_test "left_long"     "$LOREM_LONG" left
+run_border_test "right_long"    "$LOREM_LONG" right
 
 echo ""
-echo "-- Custom border percentage --"
-run_test "bottom_40pct"  "$LOREM_SHORT" bottom 40
-run_test "left_30pct"    "$LOREM_LONG"  left   30
+echo "-- Border: custom percentage --"
+run_border_test "bottom_40pct"  "$LOREM_SHORT" bottom 40
+run_border_test "left_30pct"    "$LOREM_LONG"  left   30
 
 echo ""
-echo "-- Overlay mode (border_percentage=0) --"
-run_test "overlay_bottom" "$LOREM_SHORT" bottom 0
-run_test "overlay_top"    "$LOREM_SHORT" top    0
-run_test "overlay_left"   "$LOREM_SHORT" left   0
-run_test "overlay_right"  "$LOREM_SHORT" right  0
+echo "-- Overlay: text composited inside image --"
+run_overlay_test "overlay_bottom" "$LOREM_SHORT" bottom 0
+run_overlay_test "overlay_top"    "$LOREM_SHORT" top    0
+run_overlay_test "overlay_left"   "$LOREM_SHORT" left   0
+run_overlay_test "overlay_right"  "$LOREM_SHORT" right  0
 
 echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
