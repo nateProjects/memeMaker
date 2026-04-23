@@ -6,7 +6,8 @@ if [ $# -lt 3 ]; then
     echo "Usage: $0 <input_image> <output_image> <text> [side] [border_percentage] [font]"
     echo "Side options: top, bottom, left, right (default: bottom)"
     echo "Text should be enclosed in quotes if it contains spaces"
-    echo "Border percentage is optional (default: 25% for top/bottom, 50% for left/right)"
+    echo "Border percentage: 25-50 adds a solid border (default: 25 top/bottom, 50 left/right)"
+    echo "                   0 overlays text directly onto the image"
     echo "Font is optional. If not provided, the system default will be used"
     exit 1
 fi
@@ -23,6 +24,8 @@ if [ ! -f "$input_image" ]; then
     exit 1
 fi
 
+overlay_mode=false
+
 if [ -z "$border_percentage" ]; then
     case $side in
         top|bottom)
@@ -37,15 +40,25 @@ if [ -z "$border_percentage" ]; then
             border_percentage=25
             ;;
     esac
+elif [ "$border_percentage" = "0" ]; then
+    overlay_mode=true
+    case $side in
+        top|bottom) border_percentage=25 ;;
+        left|right) border_percentage=50 ;;
+    esac
 else
     if ! [[ "$border_percentage" =~ ^[0-9]+$ ]] || [ "$border_percentage" -lt 25 ] || [ "$border_percentage" -gt 50 ]; then
-        echo "Border percentage must be an integer between 25 and 50. Defaulting to 25%."
+        echo "Border percentage must be an integer between 25 and 50, or 0 for overlay. Defaulting to 25%."
         border_percentage=25
     fi
 fi
 
 echo "Using side: $side"
-echo "Using border percentage: $border_percentage%"
+if [ "$overlay_mode" = "true" ]; then
+    echo "Mode: overlay"
+else
+    echo "Using border percentage: $border_percentage%"
+fi
 
 find_system_font() {
     local candidates=(
@@ -92,48 +105,74 @@ text_buffer=$(( (width < height ? width : height) * 2 / 100 ))
 case $side in
     top|bottom)
         border_size=$(( height * border_percentage / 100 ))
-        new_width=$width
-        new_height=$(( height + border_size ))
+        if [ "$overlay_mode" = "true" ]; then
+            new_width=$width
+            new_height=$height
+        else
+            new_width=$width
+            new_height=$(( height + border_size ))
+        fi
         if [ "$side" = "top" ]; then
             offset="+0+${border_size}"
             text_position="+${text_buffer}+${text_buffer}"
         else
             offset="+0+0"
-            text_position="+${text_buffer}+$((height + text_buffer))"
+            if [ "$overlay_mode" = "true" ]; then
+                text_position="+${text_buffer}+$((height - border_size + text_buffer))"
+            else
+                text_position="+${text_buffer}+$((height + text_buffer))"
+            fi
         fi
         text_size="$((width - 2*text_buffer))x$((border_size - 2*text_buffer))"
         ;;
     left|right)
         border_size=$(( width * border_percentage / 100 ))
-        new_width=$(( width + border_size ))
-        new_height=$height
+        if [ "$overlay_mode" = "true" ]; then
+            new_width=$width
+            new_height=$height
+        else
+            new_width=$(( width + border_size ))
+            new_height=$height
+        fi
         if [ "$side" = "left" ]; then
             offset="+${border_size}+0"
             text_position="+${text_buffer}+${text_buffer}"
         else
             offset="+0+0"
-            text_position="+$((width + text_buffer))+${text_buffer}"
+            if [ "$overlay_mode" = "true" ]; then
+                text_position="+$((width - border_size + text_buffer))+${text_buffer}"
+            else
+                text_position="+$((width + text_buffer))+${text_buffer}"
+            fi
         fi
         text_size="$((border_size - 2*text_buffer))x$((height - 2*text_buffer))"
         ;;
 esac
 
-echo "Border size: $border_size"
-echo "New dimensions: ${new_width}x${new_height}"
-echo "Text size box: $text_size"
+echo "Text area: $text_size"
+echo "Output dimensions: ${new_width}x${new_height}"
 
 temp_file=$(mktemp /tmp/memeMaker_XXXXXX.png)
 trap 'rm -f "$temp_file"' EXIT
 
-# caption: without -pointsize auto-scales the font to fill the box, fixing text clipping
-magick -background black -fill white "${font_args[@]}" -size "$text_size" \
-    caption:"$text" \
-    "$temp_file"
+if [ "$overlay_mode" = "true" ]; then
+    magick -background 'rgba(0,0,0,0.6)' -fill white "${font_args[@]}" -size "$text_size" \
+        caption:"$text" \
+        "$temp_file"
 
-magick -size "${new_width}x${new_height}" xc:black \
-    "$input_image" -geometry "$offset" -composite \
-    "$temp_file" -geometry "$text_position" -composite \
-    "$output_image"
+    magick "$input_image" \
+        "$temp_file" -geometry "$text_position" -composite \
+        "$output_image"
+else
+    magick -background black -fill white "${font_args[@]}" -size "$text_size" \
+        caption:"$text" \
+        "$temp_file"
+
+    magick -size "${new_width}x${new_height}" xc:black \
+        "$input_image" -geometry "$offset" -composite \
+        "$temp_file" -geometry "$text_position" -composite \
+        "$output_image"
+fi
 
 if [ -f "$output_image" ]; then
     output_dimensions=$(magick identify -format "%w %h" "$output_image")

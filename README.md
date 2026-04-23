@@ -24,7 +24,7 @@ This installs via Homebrew on macOS, or your distro's package manager on Linux (
 | `output_image` | Yes | Path for the output image |
 | `text` | Yes | Caption text — quote it if it contains spaces |
 | `side` | No | Where to place the caption: `top`, `bottom`, `left`, `right` (default: `bottom`) |
-| `border_percentage` | No | Border size as a % of that dimension, 25–50 (default: 25 for top/bottom, 50 for left/right) |
+| `border_percentage` | No | `25`–`50` adds a solid black border (default: 25 top/bottom, 50 left/right); `0` overlays text directly onto the image |
 | `font` | No | Font name — defaults to system font |
 
 To see available fonts:
@@ -44,6 +44,10 @@ magick -list font
 
 # Top caption with a specific font
 ./memeMaker input.jpg output.jpg "Custom font" top 40 Arial
+
+# Overlay text directly onto the image (no border added)
+./memeMaker input.jpg output.jpg "Overlay caption" bottom 0
+./memeMaker input.jpg output.jpg "Top-left overlay" top 0
 ```
 
 ## Testing

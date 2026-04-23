@@ -60,6 +60,13 @@ run_test "bottom_40pct"  "$LOREM_SHORT" bottom 40
 run_test "left_30pct"    "$LOREM_LONG"  left   30
 
 echo ""
+echo "-- Overlay mode (border_percentage=0) --"
+run_test "overlay_bottom" "$LOREM_SHORT" bottom 0
+run_test "overlay_top"    "$LOREM_SHORT" top    0
+run_test "overlay_left"   "$LOREM_SHORT" left   0
+run_test "overlay_right"  "$LOREM_SHORT" right  0
+
+echo ""
 echo "=== Results: $PASS passed, $FAIL failed ==="
 echo ""
 [ "$FAIL" -eq 0 ] && echo "All tests passed." || echo "Some tests failed — check $OUTPUT_DIR for output files."
