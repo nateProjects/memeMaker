@@ -60,7 +60,7 @@ A test suite is included that runs the script against `monkey-test-image.jpg` ac
 
 Output images are written to `test-output/` so you can inspect them visually.
 
-![](memeTest.jpg)
+![](example/memeTest.jpg)
 
 ## Notes
 
