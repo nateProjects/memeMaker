@@ -60,6 +60,8 @@ A test suite is included that runs the script against `monkey-test-image.jpg` ac
 
 Output images are written to `test-output/` so you can inspect them visually.
 
+![](memeTest.jpg)
+
 ## Notes
 
 - Text is automatically scaled to fit the caption box — longer text will appear smaller.

@@ -4,7 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 MEME_MAKER="$SCRIPT_DIR/memeMaker"
-INPUT="$SCRIPT_DIR/monkey-test-image.jpg"
+INPUT="$SCRIPT_DIR/example/monkey-test-image.jpg"
 OUTPUT_DIR="$SCRIPT_DIR/test-output"
 
 LOREM_SHORT="Lorem ipsum dolor sit amet, consectetur adipiscing elit."
